@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>pulse lab • heart rate tracker</title>
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#101a33;
+      --card:rgba(255,255,255,.08);
+      --card2:rgba(255,255,255,.10);
+      --stroke:rgba(255,255,255,.14);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.70);
+      --muted2:rgba(255,255,255,.55);
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      --r:18px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "segoe ui", roboto, helvetica, arial;
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 15% 10%, #2c2cff33, transparent 55%),
+                radial-gradient(1000px 700px at 85% 25%, #ff2cc433, transparent 55%),
+                radial-gradient(1000px 700px at 50% 90%, #2cffc533, transparent 55%),
+                linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+    .bg{
+      position:fixed;
+      inset:0;
+      background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.08) 1px, transparent 0);
+      background-size: 24px 24px;
+      opacity:.35;
+      pointer-events:none;
+    }
+    .top{
+      max-width:1100px;
+      margin:22px auto 10px;
+      padding:0 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{
+      width:44px; height:44px;
+      display:grid; place-items:center;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+      border:1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      font-size:18px;
+    }
+    h1{ margin:0; font-size:20px; letter-spacing:.4px; }
+    .brand p{ margin:2px 0 0; color:var(--muted2); font-size:13px; }
+
+    .top-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    .grid{
+      max-width:1100px;
+      margin:12px auto 18px;
+      padding:0 16px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, var(--card2), var(--card));
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding:16px;
+      backdrop-filter: blur(10px);
+    }
+    .card.wide{ grid-column: 1 / -1; }
+
+    .card-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+    .card-title h2{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.3px;
+      color:rgba(255,255,255,.95);
+    }
+
+    .pill{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--stroke);
+      color:var(--muted);
+      background: rgba(255,255,255,.06);
+      white-space:nowrap;
+    }
+    .pill.subtle{ color:var(--muted2); }
+
+    .form{ display:flex; flex-direction:column; gap:10px; }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 540px){
+      .row{ grid-template-columns:1fr; }
+    }
+    label{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    input, select, textarea{
+      width:100%;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.25);
+      color:var(--text);
+      padding:10px 12px;
+      outline:none;
+      transition: .15s ease;
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color: rgba(255,255,255,.35);
+      transform: translateY(-1px);
+    }
+    textarea{ resize: vertical; }
+
+    .actions{ align-items:end; }
+    .btn{
+      cursor:pointer;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color:var(--text);
+      padding:10px 12px;
+      font-weight:600;
+      letter-spacing:.2px;
+      transition:.15s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.32); }
+    .btn:active{ transform: translateY(0px); }
+
+    .btn.primary{
+      border-color: rgba(255,255,255,.25);
+      background: linear-gradient(135deg, rgba(45,255,188,.25), rgba(44,44,255,.18));
+    }
+    .btn.ghost{
+      background: transparent;
+    }
+    .btn.danger{
+      background: linear-gradient(135deg, rgba(255,80,170,.25), rgba(255,80,80,.16));
+      border-color: rgba(255,120,180,.25);
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+    @media (max-width: 900px){
+      .stats{ grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 16px;
+      padding:12px;
+    }
+    .stat .k{ color:var(--muted2); font-size:12px; }
+    .stat .v{ font-size:22px; font-weight:800; margin-top:4px; letter-spacing:.2px; }
+
+    .chart-wrap{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding:12px;
+    }
+    .chart-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .chart-header h3{
+      margin:0;
+      font-size:14px;
+      color:rgba(255,255,255,.9);
+    }
+    .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+    .chip{
+      cursor:pointer;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color:var(--muted);
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:600;
+      transition:.15s ease;
+      user-select:none;
+    }
+    .chip.active{
+      color:rgba(255,255,255,.95);
+      border-color: rgba(255,255,255,.3);
+      background: rgba(255,255,255,.12);
+    }
+    canvas{
+      width:100%;
+      height:auto;
+      display:block;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+    }
+    .hint{
+      margin:10px 0 0;
+      color:var(--muted2);
+      font-size:12px;
+    }
+
+    .search input{
+      border-radius:999px;
+      padding:9px 12px;
+      min-width:260px;
+    }
+    @media (max-width: 600px){
+      .search input{ min-width:0; width:100%; }
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.12);
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width: 760px;
+    }
+    th, td{
+      padding:10px 10px;
+      text-align:left;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      font-size:13px;
+      vertical-align:top;
+    }
+    th{
+      position:sticky;
+      top:0;
+      background: rgba(10,15,30,.75);
+      backdrop-filter: blur(10px);
+      color: rgba(255,255,255,.85);
+      font-size:12px;
+      letter-spacing:.3px;
+      text-transform:uppercase;
+    }
+    td{ color: rgba(255,255,255,.86); }
+    td small{ color: var(--muted2); }
+    .mono{ font-family: ui-monospace, sfmono-regular, menlo, monaco, consolas, "Liberation Mono", monospace; }
+    .row-actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+    }
+    .icon-btn{
+      cursor:pointer;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.85);
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:700;
+      transition:.15s ease;
+      white-space:nowrap;
+    }
+    .icon-btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.3); }
+    .icon-btn.danger{ border-color: rgba(255,120,180,.25); }
+
+    .foot{
+      max-width:1100px;
+      margin:0 auto 20px;
+      padding:0 16px;
+      color:var(--muted2);
+      font-size:12px;
+      text-align:center;
+    }
+    a{ color:inherit; }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">♥</div>
+      <div>
+        <h1>pulse lab</h1>
+        <p>heart rate tracking for our science fair experiment</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button class="btn ghost" id="btnExport">export csv</button>
+      <button class="btn danger" id="btnClear">clear all</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <div class="card-title">
+        <h2>log a reading</h2>
+        <span class="pill" id="pillCount">0 entries</span>
+      </div>
+
+      <form id="entryForm" class="form">
+        <div class="row">
+          <label>
+            bpm
+            <input id="bpm" type="number" inputmode="numeric" min="30" max="240" placeholder="e.g. 72" required />
+          </label>
+
+          <label>
+            time
+            <input id="time" type="datetime-local" required />
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            condition
+            <select id="condition" required>
+              <option value="resting">resting</option>
+              <option value="after walking">after walking</option>
+              <option value="after exercise">after exercise</option>
+              <option value="after fast music">after fast music</option>
+              <option value="after slow music">after slow music</option>
+              <option value="other">other</option>
+            </select>
+          </label>
+
+          <label>
+            subject id (optional)
+            <input id="subject" type="text" placeholder="e.g. a, b, me" maxlength="20" />
+          </label>
+        </div>
+
+        <label>
+          notes (optional)
+          <textarea id="notes" rows="3" placeholder="what happened? how did you feel? what song?"></textarea>
+        </label>
+
+        <div class="row actions">
+          <button class="btn primary" type="submit">add entry</button>
+          <button class="btn" type="button" id="btnAuto">use current time</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <h2>summary</h2>
+        <span class="pill subtle" id="pillRange">—</span>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="k">average</div>
+          <div class="v" id="avg">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">minimum</div>
+          <div class="v" id="min">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">maximum</div>
+          <div class="v" id="max">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">latest</div>
+          <div class="v" id="latest">—</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-header">
+          <h3>trend</h3>
+          <div class="chip-row">
+            <button class="chip active" data-filter="all">all</button>
+            <button class="chip" data-filter="resting">resting</button>
+            <button class="chip" data-filter="after fast music">fast music</button>
+            <button class="chip" data-filter="after slow music">slow music</button>
+            <button class="chip" data-filter="after exercise">exercise</button>
+          </div>
+        </div>
+        <canvas id="chart" width="900" height="320" aria-label="heart rate chart"></canvas>
+      </div>
+    </section>
+
+    <section class="card wide">
+      <div class="card-title">
+        <h2>entries</h2>
+        <div class="search">
+          <input id="search" type="text" placeholder="search condition, notes, subject..." />
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>time</th>
+              <th>bpm</th>
+              <th>condition</th>
+              <th>subject</th>
+              <th>notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    built for science fair • stored locally in this browser
+  </footer>
+
+  <script>
+    const STORAGE_KEY = "pulse_lab_entries_v1";
+
+    const el = (id) => document.getElementById(id);
+    const form = el("entryForm");
+    const bpmEl = el("bpm");
+    const timeEl = el("time");
+    const condEl = el("condition");
+    const subjectEl = el("subject");
+    const notesEl = el("notes");
+    const tbody = el("tbody");
+    const searchEl = el("search");
+
+    const avgEl = el("avg");
+    const minEl = el("min");
+    const maxEl = el("max");
+    const latestEl = el("latest");
+    const pillCount = el("pillCount");
+    const pillRange = el("pillRange");
+
+    const btnAuto = el("btnAuto");
+    const btnClear = el("btnClear");
+    const btnExport = el("btnExport");
+
+    const canvas = el("chart");
+    const ctx = canvas.getContext("2d");
+
+    let entries = load();
+    let filter = "all";
+
+    function nowLocalForDatetimeInput(){
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2,"0");
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth()+1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+
+    function load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return [];
+        const parsed = JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        return parsed;
+      }catch{
+        return [];
+      }
+    }
+
+    function save(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    function fmtTime(iso){
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString([], { year:"numeric", month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+    }
+
+    function toNumber(n){
+      const x = Number(n);
+      return Number.isFinite(x) ? x : null;
+    }
+
+    function computeStats(list){
+      if(!list.length) return null;
+      const bpms = list.map(e => e.bpm).filter(n => Number.isFinite(n));
+      if(!bpms.length) return null;
+      const sum = bpms.reduce((a,b)=>a+b,0);
+      const avg = sum / bpms.length;
+      const min = Math.min(...bpms);
+      const max = Math.max(...bpms);
+      const latest = list.slice().sort((a,b)=> new Date(b.time) - new Date(a.time))[0]?.bpm ?? null;
+      return { avg, min, max, latest };
+    }
+
+    function applyFilter(list){
+      if(filter === "all") return list;
+      return list.filter(e => e.condition === filter);
+    }
+
+    function applySearch(list){
+      const q = (searchEl.value || "").trim().toLowerCase();
+      if(!q) return list;
+      return list.filter(e => {
+        const blob = `${e.condition} ${e.subject || ""} ${e.notes || ""}`.toLowerCase();
+        return blob.includes(q);
+      });
+    }
+
+    function render(){
+      const filtered = applySearch(applyFilter(entries));
+      renderTable(filtered);
+      renderStats(filtered);
+      drawChart(filtered);
+      pillCount.textContent = `${entries.length} entr${entries.length===1?"y":"ies"}`;
+
+      if(entries.length){
+        const times = entries.map(e => new Date(e.time).getTime()).filter(t => Number.isFinite(t)).sort((a,b)=>a-b);
+        if(times.length){
+          const start = new Date(times[0]);
+          const end = new Date(times[times.length-1]);
+          pillRange.textContent = `${start.toLocaleDateString()} → ${end.toLocaleDateString()}`;
+        } else pillRange.textContent = "—";
+      } else pillRange.textContent = "—";
+    }
+
+    function renderTable(list){
+      tbody.innerHTML = "";
+      const sorted = list.slice().sort((a,b)=> new Date(b.time) - new Date(a.time));
+
+      for(const e of sorted){
+        const tr = document.createElement("tr");
+
+        const tdTime = document.createElement("td");
+        tdTime.innerHTML = `<span class="mono">${fmtTime(e.time)}</span>`;
+        const tdBpm = document.createElement("td");
+        tdBpm.innerHTML = `<strong>${e.bpm}</strong> <small>bpm</small>`;
+        const tdCond = document.createElement("td");
+        tdCond.textContent = e.condition;
+        const tdSub = document.createElement("td");
+        tdSub.textContent = e.subject || "—";
+        const tdNotes = document.createElement("td");
+        tdNotes.textContent = e.notes || "—";
+
+        const tdAct = document.createElement("td");
+        const wrap = document.createElement("div");
+        wrap.className = "row-actions";
+        const del = document.createElement("button");
+        del.className = "icon-btn danger";
+        del.textContent = "delete";
+        del.onclick = () => {
+          entries = entries.filter(x => x.id !== e.id);
+          save();
+          render();
+        };
+        wrap.appendChild(del);
+        tdAct.appendChild(wrap);
+
+        tr.append(tdTime, tdBpm, tdCond, tdSub, tdNotes, tdAct);
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderStats(list){
+      const s = computeStats(list);
+      if(!s){
+        avgEl.textContent = "—";
+        minEl.textContent = "—";
+        maxEl.textContent = "—";
+        latestEl.textContent = "—";
+        return;
+      }
+      avgEl.textContent = `${Math.round(s.avg)} bpm`;
+      minEl.textContent = `${s.min} bpm`;
+      maxEl.textContent = `${s.max} bpm`;
+      latestEl.textContent = `${s.latest ?? "—"} bpm`;
+    }
+
+    function drawChart(list){
+      // clear
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      const padL = 52, padR = 18, padT = 18, padB = 34;
+      const W = canvas.width, H = canvas.height;
+      const iw = W - padL - padR;
+      const ih = H - padT - padB;
+
+      // background grid
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+
+      // sort by time asc
+      const pts = list.slice()
+        .filter(e => Number.isFinite(e.bpm) && !Number.isNaN(new Date(e.time).getTime()))
+        .sort((a,b)=> new Date(a.time) - new Date(b.time));
+
+      // axes even if no points
+      const gridLines = 5;
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 1;
+
+      for(let i=0;i<=gridLines;i++){
+        const y = padT + (ih * i / gridLines);
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(W-padR, y);
+        ctx.stroke();
+      }
+
+      // if no points
+      if(pts.length < 2){
+        // axis labels
+        ctx.fillStyle = "rgba(255,255,255,0.70)";
+        ctx.font = "12px ui-sans-serif, system-ui";
+        ctx.fillText("bpm", 12, padT+10);
+        ctx.restore();
+
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.font = "12px ui-sans-serif, system-ui";
+        ctx.fillText("add 2+ entries to see a trend line", padL, padT + ih/2);
+        return;
+      }
+
+      const bpms = pts.map(p=>p.bpm);
+      let min = Math.min(...bpms);
+      let max = Math.max(...bpms);
+      // padding for nicer chart
+      const range = Math.max(10, max-min);
+      min = Math.floor((min - range*0.12)/5)*5;
+      max = Math.ceil((max + range*0.12)/5)*5;
+
+      const t0 = new Date(pts[0].time).getTime();
+      const t1 = new Date(pts[pts.length-1].time).getTime();
+      const tRange = Math.max(1, t1 - t0);
+
+      const xFor = (t) => padL + ( (t - t0) / tRange ) * iw;
+      const yFor = (b) => padT + (1 - ( (b - min) / (max - min || 1) )) * ih;
+
+      // y labels
+      ctx.fillStyle = "rgba(255,255,255,0.70)";
+      ctx.font = "12px ui-sans-serif, system-ui";
+      for(let i=0;i<=gridLines;i++){
+        const v = Math.round(max - ( (max-min) * i / gridLines ));
+        const y = padT + (ih * i / gridLines);
+        ctx.fillText(String(v), 10, y+4);
+      }
+
+      // line
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      for(let i=0;i<pts.length;i++){
+        const t = new Date(pts[i].time).getTime();
+        const x = xFor(t);
+        const y = yFor(pts[i].bpm);
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+
+      // dots
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      for(const p of pts){
+        const t = new Date(p.time).getTime();
+        const x = xFor(t);
+        const y = yFor(p.bpm);
+        ctx.beginPath();
+        ctx.arc(x,y,3.5,0,Math.PI*2);
+        ctx.fill();
+      }
+
+      // x labels (start/end)
+      ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.font = "12px ui-sans-serif, system-ui";
+      const startLabel = new Date(t0).toLocaleDateString([], { month:"short", day:"2-digit" });
+      const endLabel = new Date(t1).toLocaleDateString([], { month:"short", day:"2-digit" });
+      ctx.fillText(startLabel, padL, H - 12);
+      const wEnd = ctx.measureText(endLabel).width;
+      ctx.fillText(endLabel, W - padR - wEnd, H - 12);
+
+      ctx.restore();
+    }
+
+    function exportCSV(){
+      const rows = [
+        ["id","time","bpm","condition","subject","notes"]
+      ];
+      const safe = (s) => {
+        const str = (s ?? "").toString();
+        if(str.includes('"') || str.includes(",") || str.includes("\n")) return `"${str.replaceAll('"','""')}"`;
+        return str;
+      };
+      for(const e of entries.slice().sort((a,b)=> new Date(a.time)-new Date(b.time))){
+        rows.push([e.id, e.time, e.bpm, e.condition, e.subject || "", e.notes || ""].map(safe));
+      }
+      const csv = rows.map(r=>r.join(",")).join("\n");
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "pulse-lab-entries.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // events
+    btnAuto.addEventListener("click", () => {
+      timeEl.value = nowLocalForDatetimeInput();
+      timeEl.focus();
+    });
+
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const bpm = toNumber(bpmEl.value);
+      const time = timeEl.value ? new Date(timeEl.value).toISOString() : null;
+
+      if(!bpm || bpm < 30 || bpm > 240){
+        alert("please enter a valid bpm (30–240).");
+        return;
+      }
+      if(!time){
+        alert("please pick a time.");
+        return;
+      }
+
+      const entry = {
+        id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
+        bpm,
+        time,
+        condition: condEl.value,
+        subject: subjectEl.value.trim(),
+        notes: notesEl.value.trim()
+      };
+
+      entries.push(entry);
+      save();
+
+      // reset bpm + notes only (keep condition/subject for fast logging)
+      bpmEl.value = "";
+      notesEl.value = "";
+      bpmEl.focus();
+
+      render();
+    });
+
+    btnClear.addEventListener("click", () => {
+      if(!entries.length) return;
+      const ok = confirm("clear all entries? this can’t be undone.");
+      if(!ok) return;
+      entries = [];
+      save();
+      render();
+    });
+
+    btnExport.addEventListener("click", () => {
+      if(!entries.length){
+        alert("no data to export yet.");
+        return;
+      }
+      exportCSV();
+    });
+
+    searchEl.addEventListener("input", render);
+
+    // filter chips
+    document.querySelectorAll(".chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        filter = chip.dataset.filter;
+        render();
+      });
+    });
+
+    // init default time
+    timeEl.value = nowLocalForDatetimeInput();
+    render();
+  </script>
+</body>
+</html>
